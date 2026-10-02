@@ -261,6 +261,39 @@ body.modal-open {
   line-height: 1.5;
 }
 
+.leaderboard-wrapper {
+  overflow-x: auto;
+  margin-top: 22px;
+}
+
+.leaderboard {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard__cell {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--surface-light);
+
+  text-align: left;
+}
+
+.leaderboard__head .leaderboard__cell {
+  color: var(--muted-text);
+
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.leaderboard__place {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.leaderboard__body .leaderboard__row:last-child .leaderboard__cell {
+  border-bottom: 0;
+}
+
 .modal__actions {
   display: flex;
   flex-wrap: wrap;

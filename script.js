@@ -142,6 +142,60 @@ let isBoardLocked = false;
 let isGameComplete = false;
 let closeCardsTimer = null;
 
+const STORAGE_KEY = "memoryGameResults";
+
+function getSavedResults() {
+  const savedResults = localStorage.getItem(STORAGE_KEY);
+
+  if (savedResults === null) {
+    return [];
+  }
+
+  try {
+    const results = JSON.parse(savedResults);
+
+    if (Array.isArray(results)) {
+      return results;
+    }
+
+    return [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveGameResult(movesCount) {
+  const results = getSavedResults();
+
+  const newResult = {
+    moves: movesCount,
+    date: new Date().toISOString(),
+  };
+
+  results.push(newResult);
+
+  results.sort((firstResult, secondResult) => {
+    if (firstResult.moves !== secondResult.moves) {
+      return firstResult.moves - secondResult.moves;
+    }
+
+    return new Date(firstResult.date) - new Date(secondResult.date);
+  });
+
+  const bestResults = results.slice(0, 10);
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(bestResults));
+}
+
+function formatResultDate(dateString) {
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}.${month}.${year}`;
+}
+
 function resetSelectedCards() {
   firstSelectedCard = null;
   secondSelectedCard = null;
@@ -270,17 +324,25 @@ renderCards();
 const modal = createElement("dialog", "modal");
 const modalPanel = createElement("div", "modal__panel");
 const modalTitle = createElement("h2", "modal__title");
-const modalText = createElement("p", "modal__text");
+const modalContent = createElement("div", "modal__content");
 const modalActions = createElement("div", "modal__actions");
 
-modalPanel.append(modalTitle, modalText, modalActions);
+modalPanel.append(modalTitle, modalContent, modalActions);
 modal.append(modalPanel);
 
 document.body.append(modal);
 
-function openModal(title, text, actionButtons) {
+function openModal(title, content, actionButtons) {
   modalTitle.textContent = title;
-  modalText.textContent = text;
+
+  modalContent.replaceChildren();
+
+  if (typeof content === "string") {
+    const modalText = createElement("p", "modal__text", content);
+    modalContent.append(modalText);
+  } else {
+    modalContent.append(content);
+  }
 
   modalActions.replaceChildren(...actionButtons);
 
@@ -367,9 +429,89 @@ function showVictoryModal() {
   ]);
 }
 
+function createLeaderboardContent(results) {
+  if (results.length === 0) {
+    return createElement(
+      "p",
+      "modal__text",
+      "Пока нет результатов. Заверши первую игру!",
+    );
+  }
+
+  const tableWrapper = createElement("div", "leaderboard-wrapper");
+  const table = createElement("table", "leaderboard");
+  const tableHead = createElement("thead", "leaderboard__head");
+  const headingRow = createElement("tr", "leaderboard__row");
+
+  const placeHeading = createElement("th", "leaderboard__cell", "Место");
+  const movesHeading = createElement("th", "leaderboard__cell", "Ходы");
+  const dateHeading = createElement("th", "leaderboard__cell", "Дата");
+
+  placeHeading.scope = "col";
+  movesHeading.scope = "col";
+  dateHeading.scope = "col";
+
+  headingRow.append(placeHeading, movesHeading, dateHeading);
+  tableHead.append(headingRow);
+
+  const tableBody = createElement("tbody", "leaderboard__body");
+
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    const resultRow = createElement("tr", "leaderboard__row");
+
+    const placeCell = createElement(
+      "td",
+      "leaderboard__cell leaderboard__place",
+      String(i + 1),
+    );
+    const movesCell = createElement(
+      "td",
+      "leaderboard__cell",
+      String(result.moves),
+    );
+    const dateCell = createElement(
+      "td",
+      "leaderboard__cell",
+      formatResultDate(result.date),
+    );
+
+    resultRow.append(placeCell, movesCell, dateCell);
+    tableBody.append(resultRow);
+  }
+
+  table.append(tableHead, tableBody);
+  tableWrapper.append(table);
+
+  return tableWrapper;
+}
+
+function showLeaderboardModal() {
+  const results = getSavedResults();
+  const leaderboardContent = createLeaderboardContent(results);
+
+  const modalCloseButton = createElement(
+    "button",
+    "button button--primary",
+    "Закрыть",
+  );
+
+  modalCloseButton.type = "button";
+  modalCloseButton.addEventListener("click", closeModal);
+
+  openModal("Таблица лидеров", leaderboardContent, [modalCloseButton]);
+}
+
 function finishGame() {
+  if (isGameComplete) {
+    return;
+  }
+
   isGameComplete = true;
+
+  saveGameResult(moves);
   showVictoryModal();
 }
 
 newGameButton.addEventListener("click", startNewGame);
+leaderboardButton.addEventListener("click", showLeaderboardModal);
